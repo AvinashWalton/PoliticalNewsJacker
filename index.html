@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PoliticalNewsJacker — जन-सवाल, सरकारी जवाब</title>
+  <meta name="description" content="Fetch political news & generate data-driven government questions using AI. Bihar | India | World." />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Playfair Display', 'Georgia', 'serif'],
+            body: ['"IBM Plex Sans"', 'sans-serif'],
+            mono: ['"IBM Plex Mono"', 'monospace'],
+          },
+          colors: {
+            ink: {
+              950: '#0a0a0f',
+              900: '#0f0f18',
+              800: '#16161f',
+              700: '#1e1e2a',
+              600: '#28283a',
+              500: '#3a3a52',
+            },
+            signal: {
+              DEFAULT: '#e8452a',
+              light: '#ff6b4a',
+              dark: '#c03520',
+            },
+            gold: {
+              DEFAULT: '#d4a843',
+              light: '#f0c96a',
+              dark: '#a8832e',
+            },
+            muted: '#6b6b88',
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.4s ease forwards',
+            'slide-up': 'slideUp 0.4s ease forwards',
+            'pulse-dot': 'pulseDot 1.4s infinite',
+            'spin-slow': 'spin 1.2s linear infinite',
+            'shimmer': 'shimmer 1.5s infinite',
+          },
+          keyframes: {
+            fadeIn: { from: { opacity: '0' }, to: { opacity: '1' } },
+            slideUp: { from: { opacity: '0', transform: 'translateY(16px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
+            pulseDot: { '0%,100%': { opacity: '1' }, '50%': { opacity: '0.3' } },
+            shimmer: { '0%': { backgroundPosition: '-400px 0' }, '100%': { backgroundPosition: '400px 0' } },
+          },
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --signal: #e8452a;
+      --gold: #d4a843;
+      --ink-950: #0a0a0f;
+      --ink-900: #0f0f18;
+      --ink-800: #16161f;
+      --ink-700: #1e1e2a;
+      --ink-600: #28283a;
+      --ink-500: #3a3a52;
+      --muted: #6b6b88;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'IBM Plex Sans', sans-serif;
+      background-color: var(--ink-950);
+      color: #e2e2f0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Noise texture overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.4;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--ink-900); }
+    ::-webkit-scrollbar-thumb { background: var(--ink-500); border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--signal); }
+
+    /* Header gradient line */
+    .header-accent {
+      background: linear-gradient(90deg, var(--signal) 0%, var(--gold) 50%, var(--signal) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 3s infinite;
+    }
+
+    /* News card hover */
+    .news-card {
+      border-left: 3px solid transparent;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .news-card:hover {
+      border-left-color: var(--signal);
+      background-color: var(--ink-700);
+    }
+    .news-card.active {
+      border-left-color: var(--gold);
+      background-color: var(--ink-700);
+    }
+
+    /* Skeleton shimmer */
+    .skeleton {
+      background: linear-gradient(90deg, var(--ink-700) 25%, var(--ink-600) 50%, var(--ink-700) 75%);
+      background-size: 400px 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 4px;
+    }
+
+    /* Gradient text */
+    .gradient-text {
+      background: linear-gradient(135deg, var(--signal) 0%, var(--gold) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Btn styles */
+    .btn-primary {
+      background: linear-gradient(135deg, var(--signal) 0%, #c0391e 100%);
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .btn-primary:hover::after { opacity: 1; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(232,69,42,0.35); }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-gold {
+      background: linear-gradient(135deg, var(--gold) 0%, #a8832e 100%);
+      color: #0a0a0f;
+      transition: all 0.2s ease;
+    }
+    .btn-gold:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(212,168,67,0.35); }
+
+    .btn-ghost {
+      border: 1px solid var(--ink-500);
+      transition: all 0.2s ease;
+    }
+    .btn-ghost:hover { border-color: var(--muted); background: var(--ink-700); }
+
+    /* Modal backdrop */
+    .modal-backdrop {
+      backdrop-filter: blur(8px);
+      background: rgba(10,10,15,0.8);
+    }
+
+    /* Tab */
+    .tab-btn.active {
+      border-bottom: 2px solid var(--signal);
+      color: #e2e2f0;
+    }
+    .tab-btn {
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      transition: all 0.2s;
+    }
+    .tab-btn:hover { color: #e2e2f0; }
+
+    /* Tone badge */
+    .tone-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-family: 'IBM Plex Mono', monospace;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* Draft card */
+    .draft-card {
+      border-left: 3px solid var(--gold);
+      transition: all 0.2s;
+    }
+    .draft-card:hover { background: var(--ink-700); }
+
+    /* Live dot */
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--signal);
+      animation: pulseDot 1.4s infinite;
+    }
+
+    /* Filter pill */
+    .filter-pill {
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.75rem;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--ink-500);
+      color: var(--muted);
+    }
+    .filter-pill:hover, .filter-pill.active {
+      border-color: var(--signal);
+      color: #e2e2f0;
+      background: rgba(232,69,42,0.1);
+    }
+
+    /* Spinner */
+    .spinner {
+      border: 2px solid var(--ink-600);
+      border-top-color: var(--signal);
+      border-radius: 50%;
+      animation: spin-slow 0.9s linear infinite;
+    }
+    @keyframes spin-slow { to { transform: rotate(360deg); } }
+
+    /* Summary bullet */
+    .summary-bullet {
+      display: flex;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--ink-700);
+      border-radius: 8px;
+      border-left: 3px solid var(--signal);
+      animation: slide-up 0.4s ease forwards;
+    }
+
+    /* Result box */
+    .result-box {
+      background: var(--ink-800);
+      border: 1px solid var(--ink-600);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 0.92rem;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      animation: fade-in 0.4s ease;
+    }
+
+    /* Select */
+    select {
+      background: var(--ink-700);
+      border: 1px solid var(--ink-500);
+      color: #e2e2f0;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    select:focus { border-color: var(--signal); }
+
+    /* Input */
+    input[type="text"], input[type="password"], input[type="url"] {
+      background: var(--ink-700);
+      border: 1px solid var(--ink-500);
+      color: #e2e2f0;
+      outline: none;
+      transition: border-color 0.2s;
+      border-radius: 6px;
+      padding: 8px 12px;
+      width: 100%;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.85rem;
+    }
+    input:focus { border-color: var(--signal); }
+
+    /* Responsive panel */
+    @media (max-width: 768px) {
+      #action-panel {
+        display: none;
+      }
+      #action-panel.mobile-show {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        overflow-y: auto;
+        background: var(--ink-900);
+      }
+    }
+
+    /* Fade in stagger for news cards */
+    .news-card:nth-child(1) { animation-delay: 0.05s; }
+    .news-card:nth-child(2) { animation-delay: 0.1s; }
+    .news-card:nth-child(3) { animation-delay: 0.15s; }
+    .news-card:nth-child(4) { animation-delay: 0.2s; }
+    .news-card:nth-child(5) { animation-delay: 0.25s; }
+    .news-card:nth-child(6) { animation-delay: 0.3s; }
+    .news-card:nth-child(7) { animation-delay: 0.35s; }
+    .news-card:nth-child(8) { animation-delay: 0.4s; }
+    .news-card:nth-child(9) { animation-delay: 0.45s; }
+    .news-card:nth-child(10) { animation-delay: 0.5s; }
+
+    /* Tooltip */
+    [data-tip] { position: relative; }
+    [data-tip]::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: 110%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--ink-600);
+      color: #e2e2f0;
+      font-size: 0.7rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+    [data-tip]:hover::after { opacity: 1; }
+  </style>
+</head>
+
+<body class="dark">
+
+<!-- ===== SETTINGS MODAL ===== -->
+<div id="settings-modal" class="hidden fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4">
+  <div class="w-full max-w-md rounded-2xl" style="background:var(--ink-800); border:1px solid var(--ink-500); animation: slideUp 0.35s ease;">
+    <div class="flex items-center justify-between p-5 border-b" style="border-color:var(--ink-600);">
+      <div>
+        <h2 class="font-display font-bold text-lg">⚙️ API Settings</h2>
+        <p class="text-xs mt-1" style="color:var(--muted)">Keys saved locally in your browser — never sent anywhere else.</p>
+      </div>
+      <button onclick="closeSettings()" class="w-8 h-8 rounded-full flex items-center justify-center btn-ghost text-lg font-light">&times;</button>
+    </div>
+    <div class="p-5 space-y-4">
+      <div>
+        <label class="block text-sm font-medium mb-1.5" style="color:var(--gold)">🔑 GNews API Key</label>
+        <input type="password" id="gnews-key" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" />
+        <p class="text-xs mt-1.5" style="color:var(--muted)">Free at <a href="https://gnews.io" target="_blank" class="underline hover:text-white">gnews.io</a> · 100 req/day</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1.5" style="color:var(--gold)">🤖 Google Gemini API Key</label>
+        <input type="password" id="gemini-key" placeholder="AIzaSy..." />
+        <p class="text-xs mt-1.5" style="color:var(--muted)">Free at <a href="https://aistudio.google.com/app/apikey" target="_blank" class="underline hover:text-white">aistudio.google.com</a></p>
+      </div>
+      <div class="pt-1">
+        <label class="block text-sm font-medium mb-1.5">🔎 News Language</label>
+        <select id="news-lang" class="rounded-lg text-sm py-2 px-3 w-full">
+          <option value="hi">हिंदी (Hindi) — Primary</option>
+          <option value="en">English</option>
+          <option value="both">Both (Hi + En)</option>
+        </select>
+      </div>
+      <button onclick="saveSettings()" class="btn-primary w-full text-white font-medium py-2.5 rounded-xl text-sm mt-2">
+        💾 Save Settings
+      </button>
+      <p id="settings-msg" class="text-xs text-center hidden" style="color:#4ade80">✓ Settings saved successfully!</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN LAYOUT ===== -->
+<div class="flex flex-col min-h-screen">
+
+  <!-- ====== HEADER ====== -->
+  <header style="background:var(--ink-900); border-bottom:1px solid var(--ink-700);" class="sticky top-0 z-40">
+    <!-- Accent line -->
+    <div class="header-accent h-0.5 w-full"></div>
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="flex flex-col items-center justify-center w-9 h-9 rounded-lg" style="background:var(--signal);">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M3 4h14M3 8h10M3 12h14M3 16h8" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="font-display font-black text-lg leading-none gradient-text tracking-tight">PoliticalNewsJacker</h1>
+          <p class="text-xs leading-none mt-0.5" style="color:var(--muted)">जन-सवाल, सरकारी जवाब</p>
+        </div>
+      </div>
+
+      <!-- Center: Filter Pills -->
+      <div class="hidden md:flex items-center gap-2">
+        <span class="filter-pill active" data-filter="bihar" onclick="setFilter('bihar',this)">📍 Bihar</span>
+        <span class="filter-pill" data-filter="india" onclick="setFilter('india',this)">🇮🇳 India</span>
+        <span class="filter-pill" data-filter="world" onclick="setFilter('world',this)">🌍 World</span>
+      </div>
+
+      <!-- Right -->
+      <div class="flex items-center gap-2">
+        <button onclick="fetchNews()" id="refresh-btn" class="btn-ghost rounded-lg px-3 py-1.5 text-xs flex items-center gap-1.5" data-tip="Refresh News">
+          <svg id="refresh-icon" width="13" height="13" viewBox="0 0 20 20" fill="none">
+            <path d="M4 4.5A7 7 0 1 1 3 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M4 1v4h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="hidden sm:inline">Refresh</span>
+        </button>
+        <button onclick="showTab('drafts')" class="btn-ghost rounded-lg px-3 py-1.5 text-xs flex items-center gap-1.5" data-tip="My Drafts">
+          <svg width="13" height="13" viewBox="0 0 20 20" fill="none">
+            <path d="M6 2h8l4 4v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M7 9h6M7 13h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <span class="hidden sm:inline">Drafts</span>
+          <span id="drafts-count" class="hidden w-4 h-4 rounded-full text-white text-xs flex items-center justify-center font-mono" style="background:var(--signal); font-size:0.65rem;"></span>
+        </button>
+        <button onclick="openSettings()" class="btn-ghost rounded-lg px-3 py-1.5 text-xs flex items-center gap-1.5">
+          <svg width="13" height="13" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M10 1v2M10 17v2M1 10h2M17 10h2M3.22 3.22l1.42 1.42M15.36 15.36l1.42 1.42M3.22 16.78l1.42-1.42M15.36 4.64l1.42-1.42" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <span class="hidden sm:inline">Settings</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile filter row -->
+    <div class="md:hidden flex items-center gap-2 px-4 pb-2.5 overflow-x-auto">
+      <span class="filter-pill active flex-shrink-0" data-filter="bihar" onclick="setFilter('bihar',this)">📍 Bihar</span>
+      <span class="filter-pill flex-shrink-0" data-filter="india" onclick="setFilter('india',this)">🇮🇳 India</span>
+      <span class="filter-pill flex-shrink-0" data-filter="world" onclick="setFilter('world',this)">🌍 World</span>
+    </div>
+  </header>
+
+  <!-- ====== MAIN BODY ====== -->
+  <main class="flex-1 max-w-7xl mx-auto w-full px-4 py-4">
+
+    <!-- Tab Bar -->
+    <div class="flex items-center gap-6 mb-4 border-b" style="border-color:var(--ink-600);">
+      <button class="tab-btn active pb-2 text-sm font-medium" id="tab-news" onclick="showTab('news')">📰 Live News</button>
+      <button class="tab-btn pb-2 text-sm font-medium" id="tab-drafts" onclick="showTab('drafts')">📋 My Drafts</button>
+      <div class="ml-auto flex items-center gap-2 pb-2">
+        <div class="live-dot"></div>
+        <span class="text-xs font-mono" style="color:var(--muted)">LIVE</span>
+      </div>
+    </div>
+
+    <!-- ===== NEWS TAB ===== -->
+    <div id="panel-news" class="flex gap-4 h-[calc(100vh-200px)] min-h-[500px]">
+
+      <!-- LEFT: News Feed -->
+      <div class="w-full md:w-2/5 lg:w-1/3 flex flex-col" style="min-width:0;">
+        <!-- Status bar -->
+        <div id="news-status" class="text-xs font-mono mb-2 flex items-center gap-2" style="color:var(--muted)">
+          <span>Initializing feed...</span>
+        </div>
+
+        <!-- No key warning -->
+        <div id="no-key-warn" class="hidden mb-3 p-3 rounded-lg text-xs" style="background:rgba(232,69,42,0.12); border:1px solid rgba(232,69,42,0.3); color:#ff9e89;">
+          ⚠️ GNews API key missing.
+          <button onclick="openSettings()" class="underline ml-1 font-medium">Add in Settings →</button>
+        </div>
+
+        <!-- Scrollable list -->
+        <div id="news-list" class="flex-1 overflow-y-auto space-y-1 pr-1">
+          <!-- Skeleton placeholders -->
+          <div id="skeleton-container">
+            <div class="skeleton h-5 mb-2 w-3/4"></div>
+            <div class="skeleton h-3 mb-4 w-1/3"></div>
+            <div class="skeleton h-5 mb-2 w-4/5"></div>
+            <div class="skeleton h-3 mb-4 w-1/4"></div>
+            <div class="skeleton h-5 mb-2 w-2/3"></div>
+            <div class="skeleton h-3 mb-4 w-2/5"></div>
+            <div class="skeleton h-5 mb-2 w-3/4"></div>
+            <div class="skeleton h-3 mb-4 w-1/3"></div>
+            <div class="skeleton h-5 mb-2 w-4/5"></div>
+            <div class="skeleton h-3 mb-4 w-1/4"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Action Panel -->
+      <div id="action-panel" class="hidden md:flex flex-col flex-1 rounded-xl p-4 overflow-y-auto" style="background:var(--ink-900); border:1px solid var(--ink-700); min-width:0;">
+
+        <!-- Empty state -->
+        <div id="empty-state" class="flex-1 flex flex-col items-center justify-center text-center gap-4 opacity-50">
+          <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+            <rect x="8" y="8" width="40" height="40" rx="8" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <path d="M20 20h16M20 28h10M20 36h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <div>
+            <p class="font-display font-bold text-xl">Select a News Story</p>
+            <p class="text-sm mt-1" style="color:var(--muted)">Click any headline from the left to begin your analysis.</p>
+          </div>
+        </div>
+
+        <!-- Active news content -->
+        <div id="active-news-content" class="hidden flex-col gap-4 animate-fade-in">
+          <!-- Headline -->
+          <div>
+            <div class="flex items-start justify-between gap-2 mb-1">
+              <span id="active-category" class="tone-badge" style="background:rgba(232,69,42,0.15);color:var(--signal);border:1px solid rgba(232,69,42,0.3)">📍 Bihar</span>
+              <button id="mobile-close-btn" class="md:hidden btn-ghost rounded-lg px-2 py-1 text-xs" onclick="closeMobilePanel()">✕ Close</button>
+            </div>
+            <h2 id="active-title" class="font-display font-bold text-xl leading-tight mt-2"></h2>
+            <div class="flex items-center gap-3 mt-2 flex-wrap">
+              <span id="active-source" class="text-xs font-mono" style="color:var(--gold)"></span>
+              <span id="active-date" class="text-xs" style="color:var(--muted)"></span>
+            </div>
+            <a id="active-link" href="#" target="_blank" class="text-xs underline mt-1 inline-block" style="color:var(--signal)">Read full article →</a>
+          </div>
+
+          <!-- Description -->
+          <p id="active-desc" class="text-sm leading-relaxed" style="color:#a0a0b8; border-left:2px solid var(--ink-500); padding-left:12px;"></p>
+
+          <!-- Action Buttons Row -->
+          <div class="flex flex-wrap gap-2">
+            <button onclick="readIssue()" id="btn-read" class="btn-primary rounded-xl px-4 py-2 text-sm text-white font-medium flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="white" stroke-width="1.8"/><path d="M10 6v5l3 3" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg>
+              समस्या पढ़ें (Read Issue)
+            </button>
+            <div class="flex items-center gap-2">
+              <select id="tone-select" class="rounded-xl py-2 px-3 text-sm">
+                <option value="data">📊 Data-Driven</option>
+                <option value="emotional">💬 Emotional Appeal</option>
+                <option value="direct">🎯 Direct Question</option>
+              </select>
+              <button onclick="draftQuestion()" id="btn-draft" class="btn-gold rounded-xl px-4 py-2 text-sm font-semibold flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M3 17l1-5L14 2l4 4-10 10-5 1z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                सवाल लिखें
+              </button>
+            </div>
+          </div>
+
+          <!-- Summary Section -->
+          <div id="summary-section" class="hidden flex-col gap-2">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-sm font-semibold">📋 संक्षिप्त विश्लेषण</span>
+              <div id="summary-spinner" class="hidden spinner w-4 h-4"></div>
+            </div>
+            <div id="summary-content" class="space-y-2"></div>
+          </div>
+
+          <!-- Draft Section -->
+          <div id="draft-section" class="hidden flex-col gap-3">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-sm font-semibold">✍️ Government Question Draft</span>
+              <div id="draft-spinner" class="hidden spinner w-4 h-4"></div>
+            </div>
+            <div id="draft-content"></div>
+
+            <!-- Tweet actions -->
+            <div id="tweet-actions" class="hidden flex flex-wrap gap-2">
+              <button onclick="postToTwitter()" class="rounded-xl px-4 py-2 text-sm font-medium flex items-center gap-2 text-white" style="background:#1d9bf0;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.912-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                Post to X (Twitter)
+              </button>
+              <button onclick="saveDraft()" class="btn-ghost rounded-xl px-4 py-2 text-sm font-medium flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M4 2h9l3 3v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.8"/><path d="M6 9h8M6 13h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                Save Draft
+              </button>
+              <button onclick="copyDraft()" class="btn-ghost rounded-xl px-4 py-2 text-sm font-medium flex items-center gap-2" id="copy-btn">
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><rect x="8" y="8" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M4 12H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1" stroke="currentColor" stroke-width="1.5"/></svg>
+                Copy
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== DRAFTS TAB ===== -->
+    <div id="panel-drafts" class="hidden">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-display font-bold text-xl">📋 My Saved Drafts</h2>
+        <button onclick="clearAllDrafts()" class="btn-ghost rounded-lg px-3 py-1.5 text-xs text-red-400 border-red-900 hover:bg-red-950">🗑 Clear All</button>
+      </div>
+      <div id="drafts-list" class="space-y-3 max-w-3xl"></div>
+    </div>
+
+  </main>
+
+  <!-- ====== FOOTER ====== -->
+  <footer class="mt-auto py-4" style="background:var(--ink-900); border-top:1px solid var(--ink-700);">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p class="text-sm font-medium" style="color:var(--muted)">
+        Made with <span style="color:var(--signal)">♥</span> in India by <span class="font-semibold" style="color:var(--gold)">Avinash Walton</span>
+      </p>
+      <div class="flex items-center gap-4 text-xs" style="color:var(--muted)">
+        <span class="font-mono">v1.0.0</span>
+        <a href="https://github.com/avinashwalton/PoliticalNewsJacker" target="_blank" class="hover:text-white transition-colors flex items-center gap-1">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
+        </a>
+        <span>MIT License</span>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-sm font-medium shadow-xl" style="background:var(--ink-700);border:1px solid var(--ink-500);"></div>
+
+<!-- ===== JAVASCRIPT ===== -->
+<script>
+// ==================== STATE ====================
+let currentFilter = 'bihar';
+let currentArticle = null;
+let currentDraftText = '';
+let allArticles = [];
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', () => {
+  loadSavedKeys();
+  updateDraftsCount();
+  fetchNews();
+});
+
+// ==================== SETTINGS ====================
+function openSettings() {
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+function closeSettings() {
+  document.getElementById('settings-modal').classList.add('hidden');
+}
+function saveSettings() {
+  const gk = document.getElementById('gnews-key').value.trim();
+  const ak = document.getElementById('gemini-key').value.trim();
+  const lang = document.getElementById('news-lang').value;
+  if (gk) localStorage.setItem('pnj_gnews_key', gk);
+  if (ak) localStorage.setItem('pnj_gemini_key', ak);
+  localStorage.setItem('pnj_lang', lang);
+  const msg = document.getElementById('settings-msg');
+  msg.classList.remove('hidden');
+  setTimeout(() => msg.classList.add('hidden'), 2500);
+  showToast('✅ Settings saved!');
+  setTimeout(() => { closeSettings(); fetchNews(); }, 800);
+}
+function loadSavedKeys() {
+  const gk = localStorage.getItem('pnj_gnews_key') || '';
+  const ak = localStorage.getItem('pnj_gemini_key') || '';
+  const lang = localStorage.getItem('pnj_lang') || 'hi';
+  if (gk) document.getElementById('gnews-key').value = gk;
+  if (ak) document.getElementById('gemini-key').value = ak;
+  document.getElementById('news-lang').value = lang;
+}
+
+// ==================== TABS ====================
+function showTab(tab) {
+  ['news','drafts'].forEach(t => {
+    document.getElementById(`panel-${t}`).classList.add('hidden');
+    document.getElementById(`tab-${t}`)?.classList.remove('active');
+  });
+  document.getElementById(`panel-${tab}`).classList.remove('hidden');
+  document.getElementById(`tab-${tab}`)?.classList.add('active');
+  if (tab === 'drafts') renderDrafts();
+}
+
+// ==================== FILTER ====================
+function setFilter(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll(`.filter-pill[data-filter="${filter}"]`).forEach(p => p.classList.add('active'));
+  fetchNews();
+}
+
+// ==================== NEWS FETCH ====================
+async function fetchNews() {
+  const apiKey = localStorage.getItem('pnj_gnews_key');
+  if (!apiKey) {
+    document.getElementById('no-key-warn').classList.remove('hidden');
+    showSkeleton(false);
+    setStatus('⚠️ Add GNews API key in Settings to load news.');
+    return;
+  }
+  document.getElementById('no-key-warn').classList.add('hidden');
+
+  const lang = localStorage.getItem('pnj_lang') || 'hi';
+  const filterMap = {
+    bihar: { q: 'Bihar politics government', country: 'in' },
+    india: { q: 'India government policy parliament', country: 'in' },
+    world: { q: 'global politics government', country: null }
+  };
+  const cfg = filterMap[currentFilter] || filterMap.bihar;
+
+  setStatus('🔄 Fetching latest news...');
+  showSkeleton(true);
+
+  // Spin refresh icon
+  const icon = document.getElementById('refresh-icon');
+  icon.style.animation = 'spin-slow 0.9s linear infinite';
+
+  try {
+    const langParam = lang === 'both' ? 'hi' : lang;
+    const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(cfg.q)}&lang=${langParam}${cfg.country ? '&country='+cfg.country : ''}&max=20&apikey=${apiKey}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    const data = await res.json();
+    if (!data.articles || data.articles.length === 0) throw new Error('No articles found.');
+    allArticles = data.articles;
+    renderNewsList(allArticles);
+    setStatus(`✓ ${allArticles.length} stories loaded · ${new Date().toLocaleTimeString('hi-IN')}`);
+  } catch (err) {
+    showSkeleton(false);
+    let msg = err.message;
+    if (msg.includes('401') || msg.includes('403')) msg = 'Invalid API key. Please check Settings.';
+    else if (msg.includes('429')) msg = 'Rate limit reached. Try again later.';
+    setStatus(`❌ Error: ${msg}`);
+    document.getElementById('news-list').innerHTML = `
+      <div class="text-center py-12 text-sm" style="color:var(--muted)">
+        <p class="text-4xl mb-3">📡</p>
+        <p class="font-medium">Could not load news</p>
+        <p class="text-xs mt-1">${msg}</p>
+        <button onclick="fetchNews()" class="btn-primary mt-4 px-4 py-2 rounded-lg text-white text-xs">Retry</button>
+      </div>`;
+  } finally {
+    icon.style.animation = '';
+    showSkeleton(false);
+  }
+}
+
+function renderNewsList(articles) {
+  const list = document.getElementById('news-list');
+  list.innerHTML = '';
+  articles.forEach((a, i) => {
+    const date = new Date(a.publishedAt);
+    const dateStr = date.toLocaleDateString('hi-IN', { day: 'numeric', month: 'short' });
+    const card = document.createElement('div');
+    card.className = 'news-card p-3 rounded-lg animate-fade-in';
+    card.style.animationDelay = `${i * 0.05}s`;
+    card.style.opacity = '0';
+    card.innerHTML = `
+      <p class="text-sm font-medium leading-snug mb-1 line-clamp-2">${a.title}</p>
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-xs font-mono truncate" style="color:var(--gold); max-width:140px;">${a.source?.name || 'Unknown'}</span>
+        <span class="text-xs flex-shrink-0" style="color:var(--muted)">${dateStr}</span>
+      </div>
+    `;
+    card.addEventListener('click', () => selectArticle(a, card));
+    list.appendChild(card);
+    // Trigger animation
+    requestAnimationFrame(() => { card.style.opacity = ''; });
+  });
+}
+
+function selectArticle(article, cardEl) {
+  currentArticle = article;
+  // Reset sections
+  document.getElementById('summary-section').classList.add('hidden');
+  document.getElementById('draft-section').classList.add('hidden');
+  document.getElementById('summary-content').innerHTML = '';
+  document.getElementById('draft-content').innerHTML = '';
+  document.getElementById('tweet-actions').classList.add('hidden');
+  currentDraftText = '';
+
+  // Active card state
+  document.querySelectorAll('.news-card').forEach(c => c.classList.remove('active'));
+  cardEl.classList.add('active');
+
+  // Populate action panel
+  document.getElementById('active-title').textContent = article.title;
+  document.getElementById('active-source').textContent = '📰 ' + (article.source?.name || 'Unknown');
+  document.getElementById('active-date').textContent = new Date(article.publishedAt).toLocaleString('hi-IN');
+  document.getElementById('active-desc').textContent = article.description || article.content || 'विवरण उपलब्ध नहीं है।';
+  document.getElementById('active-link').href = article.url || '#';
+  document.getElementById('active-category').textContent =
+    currentFilter === 'bihar' ? '📍 Bihar' :
+    currentFilter === 'india' ? '🇮🇳 India' : '🌍 World';
+
+  // Show content
+  document.getElementById('empty-state').classList.add('hidden');
+  const content = document.getElementById('active-news-content');
+  content.classList.remove('hidden');
+  content.classList.add('flex');
+
+  // Mobile: show panel
+  const panel = document.getElementById('action-panel');
+  panel.classList.add('mobile-show');
+  panel.classList.remove('hidden');
+}
+
+function closeMobilePanel() {
+  const panel = document.getElementById('action-panel');
+  panel.classList.remove('mobile-show');
+}
+
+// ==================== AI: READ ISSUE ====================
+async function readIssue() {
+  if (!currentArticle) return showToast('⚠️ कोई खबर चुनें।');
+  const geminiKey = localStorage.getItem('pnj_gemini_key');
+  if (!geminiKey) return showToast('⚠️ Gemini API key missing in Settings.');
+
+  const section = document.getElementById('summary-section');
+  const spinner = document.getElementById('summary-spinner');
+  const content = document.getElementById('summary-content');
+
+  section.classList.remove('hidden');
+  section.classList.add('flex');
+  spinner.classList.remove('hidden');
+  content.innerHTML = '<p class="text-xs animate-pulse" style="color:var(--muted)">AI विश्लेषण कर रहा है...</p>';
+
+  const prompt = `
+तुम एक expert political analyst हो। नीचे दी गई खबर को पढ़कर तीन points में हिंदी में summary दो।
+खबर: "${currentArticle.title}. ${currentArticle.description || ''}"
+
+Format EXACTLY like this (no extra text):
+🔴 समस्या क्या है: [2-3 sentences]
+⚡ विवाद/कारण: [2-3 sentences]
+👥 जनता पर असर: [2-3 sentences]
+  `.trim();
+
+  try {
+    const result = await callGemini(prompt, geminiKey);
+    spinner.classList.add('hidden');
+    content.innerHTML = '';
+
+    const lines = result.split('\n').filter(l => l.trim().startsWith('🔴') || l.trim().startsWith('⚡') || l.trim().startsWith('👥'));
+    if (lines.length === 0) {
+      content.innerHTML = `<div class="result-box">${result}</div>`;
+    } else {
+      lines.forEach((line, i) => {
+        const div = document.createElement('div');
+        div.className = 'summary-bullet';
+        div.style.animationDelay = `${i * 0.1}s`;
+        div.style.opacity = '0';
+        div.innerHTML = `<span class="text-sm leading-relaxed">${line.trim()}</span>`;
+        content.appendChild(div);
+        requestAnimationFrame(() => { div.style.opacity = ''; });
+      });
+    }
+  } catch (err) {
+    spinner.classList.add('hidden');
+    content.innerHTML = `<p class="text-sm text-red-400">❌ Error: ${err.message}</p>`;
+  }
+}
+
+// ==================== AI: DRAFT QUESTION ====================
+async function draftQuestion() {
+  if (!currentArticle) return showToast('⚠️ कोई खबर चुनें।');
+  const geminiKey = localStorage.getItem('pnj_gemini_key');
+  if (!geminiKey) return showToast('⚠️ Gemini API key missing in Settings.');
+
+  const tone = document.getElementById('tone-select').value;
+  const toneMap = {
+    data: 'data-driven, fact-based, cite numbers and statistics where possible',
+    emotional: 'emotional appeal, connect with common people\'s suffering',
+    direct: 'direct, pointed question, demanding accountability'
+  };
+  const toneLabel = { data: '📊 Data-Driven', emotional: '💬 Emotional', direct: '🎯 Direct' };
+
+  const section = document.getElementById('draft-section');
+  const spinner = document.getElementById('draft-spinner');
+  const content = document.getElementById('draft-content');
+  const tweetActions = document.getElementById('tweet-actions');
+
+  section.classList.remove('hidden');
+  section.classList.add('flex');
+  spinner.classList.remove('hidden');
+  tweetActions.classList.add('hidden');
+  content.innerHTML = '<p class="text-xs animate-pulse" style="color:var(--muted)">सवाल तैयार हो रहा है...</p>';
+
+  const prompt = `
+You are a sharp political communicator inspired by intellectuals like Raghav Chadha. 
+
+Write a highly professional, ${toneMap[tone]} tweet/post questioning the government based on this news issue.
+
+News: "${currentArticle.title}. ${currentArticle.description || ''}"
+
+STRICT RULES:
+- Language: Hindi/Hinglish (mix naturally)
+- DO NOT name or target any individual politician
+- DO NOT show enmity towards any political party — be non-partisan
+- Focus ONLY on the public issue (Jan Samasya)
+- Tone: Educated, intellectual, polite but firm
+- End with 1-2 relevant hashtags
+- Length: 200-280 characters max (Twitter limit)
+- Start with an impactful opener in Hindi
+
+Output ONLY the tweet text, nothing else.
+  `.trim();
+
+  try {
+    const result = await callGemini(prompt, geminiKey);
+    spinner.classList.add('hidden');
+    currentDraftText = result.trim();
+
+    content.innerHTML = `
+      <div class="result-box">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="tone-badge" style="background:rgba(212,168,67,0.15);color:var(--gold);border:1px solid rgba(212,168,67,0.3)">${toneLabel[tone]}</span>
+          <span class="text-xs font-mono" style="color:var(--muted)">${currentDraftText.length} chars</span>
+        </div>
+        <p id="draft-text" class="text-sm leading-relaxed">${currentDraftText}</p>
+      </div>
+    `;
+    tweetActions.classList.remove('hidden');
+  } catch (err) {
+    spinner.classList.add('hidden');
+    content.innerHTML = `<p class="text-sm text-red-400">❌ Error: ${err.message}</p>`;
+  }
+}
+
+// ==================== GEMINI API ====================
+async function callGemini(prompt, apiKey) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.7, maxOutputTokens: 512 }
+  };
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const msg = err?.error?.message || `HTTP ${res.status}`;
+    if (res.status === 400) throw new Error('Invalid Gemini API key.');
+    if (res.status === 429) throw new Error('Gemini quota exceeded. Try later.');
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Empty response from Gemini.');
+  return text;
+}
+
+// ==================== TWITTER SHARE ====================
+function postToTwitter() {
+  if (!currentDraftText) return;
+  const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(currentDraftText)}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+// ==================== DRAFTS ====================
+function saveDraft() {
+  if (!currentDraftText || !currentArticle) return;
+  const drafts = JSON.parse(localStorage.getItem('pnj_drafts') || '[]');
+  const tone = document.getElementById('tone-select').value;
+  const draft = {
+    id: Date.now(),
+    text: currentDraftText,
+    headline: currentArticle.title,
+    source: currentArticle.source?.name || '',
+    tone,
+    filter: currentFilter,
+    savedAt: new Date().toISOString()
+  };
+  drafts.unshift(draft);
+  // Keep max 50
+  if (drafts.length > 50) drafts.pop();
+  localStorage.setItem('pnj_drafts', JSON.stringify(drafts));
+  updateDraftsCount();
+  showToast('✅ Draft saved!');
+}
+
+function updateDraftsCount() {
+  const drafts = JSON.parse(localStorage.getItem('pnj_drafts') || '[]');
+  const badge = document.getElementById('drafts-count');
+  if (drafts.length > 0) {
+    badge.classList.remove('hidden');
+    badge.classList.add('flex');
+    badge.textContent = drafts.length > 9 ? '9+' : drafts.length;
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+function renderDrafts() {
+  const drafts = JSON.parse(localStorage.getItem('pnj_drafts') || '[]');
+  const list = document.getElementById('drafts-list');
+  if (drafts.length === 0) {
+    list.innerHTML = `<div class="text-center py-16" style="color:var(--muted)">
+      <p class="text-4xl mb-3">📋</p>
+      <p class="font-medium">No drafts yet</p>
+      <p class="text-xs mt-1">Generate and save government questions to see them here.</p>
+    </div>`;
+    return;
+  }
+  const toneLabel = { data: '📊 Data-Driven', emotional: '💬 Emotional', direct: '🎯 Direct' };
+  const filterLabel = { bihar: '📍 Bihar', india: '🇮🇳 India', world: '🌍 World' };
+  list.innerHTML = drafts.map(d => `
+    <div class="draft-card p-4 rounded-xl animate-fade-in" style="background:var(--ink-800);border:1px solid var(--ink-700)">
+      <div class="flex items-start justify-between gap-3 mb-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="tone-badge" style="background:rgba(212,168,67,0.1);color:var(--gold);border:1px solid rgba(212,168,67,0.2)">${toneLabel[d.tone] || d.tone}</span>
+          <span class="tone-badge" style="background:rgba(232,69,42,0.1);color:var(--signal);border:1px solid rgba(232,69,42,0.2)">${filterLabel[d.filter] || d.filter}</span>
+        </div>
+        <div class="flex gap-2 flex-shrink-0">
+          <button onclick="tweetDraft('${d.id}')" class="btn-ghost rounded-lg px-2 py-1 text-xs flex items-center gap-1" style="border-color:#1d9bf0;color:#1d9bf0">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.912-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            Tweet
+          </button>
+          <button onclick="deleteDraft(${d.id})" class="btn-ghost rounded-lg px-2 py-1 text-xs text-red-400 border-red-900">✕</button>
+        </div>
+      </div>
+      <p class="text-xs mb-2 italic line-clamp-1" style="color:var(--muted)">📰 ${d.headline}</p>
+      <p class="text-sm leading-relaxed">${d.text}</p>
+      <p class="text-xs mt-2 font-mono" style="color:var(--muted)">${new Date(d.savedAt).toLocaleString('hi-IN')}</p>
+    </div>
+  `).join('');
+}
+
+function tweetDraft(id) {
+  const drafts = JSON.parse(localStorage.getItem('pnj_drafts') || '[]');
+  const d = drafts.find(x => x.id == id);
+  if (d) window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(d.text)}`, '_blank', 'noopener,noreferrer');
+}
+
+function deleteDraft(id) {
+  let drafts = JSON.parse(localStorage.getItem('pnj_drafts') || '[]');
+  drafts = drafts.filter(d => d.id !== id);
+  localStorage.setItem('pnj_drafts', JSON.stringify(drafts));
+  updateDraftsCount();
+  renderDrafts();
+  showToast('🗑 Draft deleted.');
+}
+
+function clearAllDrafts() {
+  if (!confirm('All drafts will be deleted. Are you sure?')) return;
+  localStorage.removeItem('pnj_drafts');
+  updateDraftsCount();
+  renderDrafts();
+  showToast('🗑 All drafts cleared.');
+}
+
+function copyDraft() {
+  if (!currentDraftText) return;
+  navigator.clipboard.writeText(currentDraftText).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✅ Copied!';
+    showToast('📋 Copied to clipboard!');
+    setTimeout(() => { btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 20 20" fill="none"><rect x="8" y="8" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M4 12H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1" stroke="currentColor" stroke-width="1.5"/></svg> Copy`; }, 2000);
+  });
+}
+
+// ==================== UTILS ====================
+function setStatus(msg) {
+  document.getElementById('news-status').innerHTML = `<span>${msg}</span>`;
+}
+
+function showSkeleton(show) {
+  const sk = document.getElementById('skeleton-container');
+  if (sk) sk.style.display = show ? 'block' : 'none';
+}
+
+function showToast(msg, duration = 2800) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.remove('hidden');
+  toast.style.animation = 'slideUp 0.3s ease';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.style.animation = 'fadeIn 0.3s ease reverse';
+    setTimeout(() => toast.classList.add('hidden'), 280);
+  }, duration);
+}
+
+// Close modal on outside click
+document.getElementById('settings-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeSettings();
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeSettings();
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSettings(); }
+});
+</script>
+</body>
+</html>
