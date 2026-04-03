@@ -357,24 +357,28 @@
       <button onclick="closeSettings()" class="w-8 h-8 rounded-full flex items-center justify-center btn-ghost text-lg font-light">&times;</button>
     </div>
     <div class="p-5 space-y-4">
-      <div>
-        <label class="block text-sm font-medium mb-1.5" style="color:var(--gold)">🔑 GNews API Key</label>
-        <input type="password" id="gnews-key" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" />
-        <p class="text-xs mt-1.5" style="color:var(--muted)">Free at <a href="https://gnews.io" target="_blank" class="underline hover:text-white">gnews.io</a> · 100 req/day</p>
+
+      <!-- News works without a key — just info box -->
+      <div class="p-3 rounded-lg text-xs flex gap-2" style="background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.2); color:#86efac;">
+        <span>✅</span>
+        <span><strong>News loads automatically</strong> — no news API key required. Uses curated RSS feeds from BBC Hindi, NDTV, Dainik Bhaskar & more.</span>
       </div>
+
       <div>
-        <label class="block text-sm font-medium mb-1.5" style="color:var(--gold)">🤖 Google Gemini API Key</label>
+        <label class="block text-sm font-medium mb-1.5" style="color:var(--gold)">🤖 Google Gemini API Key <span style="color:var(--signal)">*</span></label>
         <input type="password" id="gemini-key" placeholder="AIzaSy..." />
-        <p class="text-xs mt-1.5" style="color:var(--muted)">Free at <a href="https://aistudio.google.com/app/apikey" target="_blank" class="underline hover:text-white">aistudio.google.com</a></p>
+        <p class="text-xs mt-1.5" style="color:var(--muted)">Required for AI features · Free at <a href="https://aistudio.google.com/app/apikey" target="_blank" class="underline hover:text-white">aistudio.google.com</a></p>
       </div>
+
       <div class="pt-1">
-        <label class="block text-sm font-medium mb-1.5">🔎 News Language</label>
+        <label class="block text-sm font-medium mb-1.5">🔎 News Source Preference</label>
         <select id="news-lang" class="rounded-lg text-sm py-2 px-3 w-full">
-          <option value="hi">हिंदी (Hindi) — Primary</option>
-          <option value="en">English</option>
-          <option value="both">Both (Hi + En)</option>
+          <option value="hi">हिंदी (Hindi) — BBC Hindi, Bhaskar, NDTV</option>
+          <option value="en">English — The Hindu, NDTV English</option>
+          <option value="both">Both (Hindi + English sources)</option>
         </select>
       </div>
+
       <button onclick="saveSettings()" class="btn-primary w-full text-white font-medium py-2.5 rounded-xl text-sm mt-2">
         💾 Save Settings
       </button>
@@ -468,10 +472,9 @@
           <span>Initializing feed...</span>
         </div>
 
-        <!-- No key warning -->
-        <div id="no-key-warn" class="hidden mb-3 p-3 rounded-lg text-xs" style="background:rgba(232,69,42,0.12); border:1px solid rgba(232,69,42,0.3); color:#ff9e89;">
-          ⚠️ GNews API key missing.
-          <button onclick="openSettings()" class="underline ml-1 font-medium">Add in Settings →</button>
+        <!-- Gemini key hint (shown once on load) -->
+        <div id="no-gemini-warn" class="hidden mb-3 p-3 rounded-lg text-xs" style="background:rgba(212,168,67,0.1); border:1px solid rgba(212,168,67,0.25); color:#fcd34d;">
+          💡 Add your <strong>Gemini API key</strong> in <button onclick="openSettings()" class="underline font-medium">Settings</button> to unlock AI summarization &amp; drafting.
         </div>
 
         <!-- Scrollable list -->
@@ -638,12 +641,12 @@ function closeSettings() {
   document.getElementById('settings-modal').classList.add('hidden');
 }
 function saveSettings() {
-  const gk = document.getElementById('gnews-key').value.trim();
   const ak = document.getElementById('gemini-key').value.trim();
   const lang = document.getElementById('news-lang').value;
-  if (gk) localStorage.setItem('pnj_gnews_key', gk);
   if (ak) localStorage.setItem('pnj_gemini_key', ak);
   localStorage.setItem('pnj_lang', lang);
+  // Hide Gemini hint banner if key is now set
+  if (ak) document.getElementById('no-gemini-warn').classList.add('hidden');
   const msg = document.getElementById('settings-msg');
   msg.classList.remove('hidden');
   setTimeout(() => msg.classList.add('hidden'), 2500);
@@ -651,12 +654,12 @@ function saveSettings() {
   setTimeout(() => { closeSettings(); fetchNews(); }, 800);
 }
 function loadSavedKeys() {
-  const gk = localStorage.getItem('pnj_gnews_key') || '';
   const ak = localStorage.getItem('pnj_gemini_key') || '';
   const lang = localStorage.getItem('pnj_lang') || 'hi';
-  if (gk) document.getElementById('gnews-key').value = gk;
   if (ak) document.getElementById('gemini-key').value = ak;
   document.getElementById('news-lang').value = lang;
+  // Show Gemini hint if key not set
+  if (!ak) document.getElementById('no-gemini-warn').classList.remove('hidden');
 }
 
 // ==================== TABS ====================
@@ -678,59 +681,111 @@ function setFilter(filter, el) {
   fetchNews();
 }
 
+// ==================== RSS SOURCES ====================
+const RSS_SOURCES = {
+  bihar: [
+    { url: 'https://www.bhaskar.com/rss-v1--category-1061.xml', name: 'Dainik Bhaskar' },
+    { url: 'https://www.jagran.com/rss/news-national.xml',       name: 'Jagran' },
+    { url: 'https://feeds.bbci.co.uk/hindi/india/rss.xml',       name: 'BBC Hindi' },
+  ],
+  india: [
+    { url: 'https://feeds.bbci.co.uk/hindi/india/rss.xml',       name: 'BBC Hindi' },
+    { url: 'https://www.ndtv.com/rss/india.xml',                 name: 'NDTV' },
+    { url: 'https://www.thehindu.com/news/national/feeder/default.rss', name: 'The Hindu' },
+  ],
+  world: [
+    { url: 'https://feeds.bbci.co.uk/hindi/world/rss.xml',       name: 'BBC Hindi World' },
+    { url: 'https://rss.nytimes.com/services/xml/rss/nyt/World.xml', name: 'NYT World' },
+    { url: 'https://www.thehindu.com/news/international/feeder/default.rss', name: 'The Hindu' },
+  ]
+};
+
+// Normalise rss2json item → common article shape
+function normalizeRssItem(item, sourceName) {
+  return {
+    title:       item.title   || 'Untitled',
+    description: item.description
+                   ? item.description.replace(/<[^>]+>/g, '').slice(0, 280)
+                   : (item.content ? item.content.replace(/<[^>]+>/g, '').slice(0, 280) : ''),
+    url:         item.link    || '#',
+    publishedAt: item.pubDate || new Date().toISOString(),
+    source:      { name: item.author || sourceName },
+    urlToImage:  item.thumbnail || null,
+  };
+}
+
 // ==================== NEWS FETCH ====================
 async function fetchNews() {
-  const apiKey = localStorage.getItem('pnj_gnews_key');
-  if (!apiKey) {
-    document.getElementById('no-key-warn').classList.remove('hidden');
-    showSkeleton(false);
-    setStatus('⚠️ Add GNews API key in Settings to load news.');
-    return;
-  }
-  document.getElementById('no-key-warn').classList.add('hidden');
-
-  const lang = localStorage.getItem('pnj_lang') || 'hi';
-  const filterMap = {
-    bihar: { q: 'Bihar politics government', country: 'in' },
-    india: { q: 'India government policy parliament', country: 'in' },
-    world: { q: 'global politics government', country: null }
-  };
-  const cfg = filterMap[currentFilter] || filterMap.bihar;
-
   setStatus('🔄 Fetching latest news...');
   showSkeleton(true);
 
-  // Spin refresh icon
   const icon = document.getElementById('refresh-icon');
   icon.style.animation = 'spin-slow 0.9s linear infinite';
 
-  try {
-    const langParam = lang === 'both' ? 'hi' : lang;
-    const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(cfg.q)}&lang=${langParam}${cfg.country ? '&country='+cfg.country : ''}&max=20&apikey=${apiKey}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    const data = await res.json();
-    if (!data.articles || data.articles.length === 0) throw new Error('No articles found.');
-    allArticles = data.articles;
-    renderNewsList(allArticles);
-    setStatus(`✓ ${allArticles.length} stories loaded · ${new Date().toLocaleTimeString('hi-IN')}`);
-  } catch (err) {
-    showSkeleton(false);
-    let msg = err.message;
-    if (msg.includes('401') || msg.includes('403')) msg = 'Invalid API key. Please check Settings.';
-    else if (msg.includes('429')) msg = 'Rate limit reached. Try again later.';
-    setStatus(`❌ Error: ${msg}`);
+  const lang       = localStorage.getItem('pnj_lang') || 'hi';
+  const sources    = RSS_SOURCES[currentFilter] || RSS_SOURCES.bihar;
+  const RSS2JSON   = 'https://api.rss2json.com/v1/api.json?count=12&rss_url=';
+
+  // Pick sources by language preference
+  let chosen = sources;
+  if (lang === 'en') {
+    chosen = sources.filter(s => !s.name.toLowerCase().includes('bhaskar') && !s.name.toLowerCase().includes('jagran'));
+  }
+  if (lang === 'hi') {
+    // prefer Hindi-named sources first but keep all as fallback
+    const hi = sources.filter(s => s.name.toLowerCase().includes('hindi') || s.name.toLowerCase().includes('bhaskar') || s.name.toLowerCase().includes('jagran'));
+    chosen = hi.length ? hi : sources;
+  }
+
+  // Fetch all sources in parallel, ignore individual failures
+  const results = await Promise.allSettled(
+    chosen.map(src =>
+      fetch(RSS2JSON + encodeURIComponent(src.url))
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(data => ({ data, sourceName: src.name }))
+    )
+  );
+
+  const articles = [];
+  const seenTitles = new Set();
+
+  for (const res of results) {
+    if (res.status === 'fulfilled') {
+      const { data, sourceName } = res.value;
+      if (data.status === 'ok' && Array.isArray(data.items)) {
+        for (const item of data.items) {
+          const norm = normalizeRssItem(item, sourceName);
+          // Deduplicate by title prefix
+          const key = norm.title.slice(0, 40).toLowerCase();
+          if (!seenTitles.has(key)) {
+            seenTitles.add(key);
+            articles.push(norm);
+          }
+        }
+      }
+    }
+  }
+
+  icon.style.animation = '';
+  showSkeleton(false);
+
+  if (articles.length === 0) {
+    setStatus('❌ Could not load news. Check your internet connection.');
     document.getElementById('news-list').innerHTML = `
       <div class="text-center py-12 text-sm" style="color:var(--muted)">
         <p class="text-4xl mb-3">📡</p>
         <p class="font-medium">Could not load news</p>
-        <p class="text-xs mt-1">${msg}</p>
+        <p class="text-xs mt-1">RSS feeds unreachable. Please check connection.</p>
         <button onclick="fetchNews()" class="btn-primary mt-4 px-4 py-2 rounded-lg text-white text-xs">Retry</button>
       </div>`;
-  } finally {
-    icon.style.animation = '';
-    showSkeleton(false);
+    return;
   }
+
+  // Sort by date descending
+  articles.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+  allArticles = articles;
+  renderNewsList(allArticles);
+  setStatus(`✓ ${allArticles.length} stories loaded · ${new Date().toLocaleTimeString('hi-IN')}`);
 }
 
 function renderNewsList(articles) {
@@ -802,7 +857,7 @@ function closeMobilePanel() {
 async function readIssue() {
   if (!currentArticle) return showToast('⚠️ कोई खबर चुनें।');
   const geminiKey = localStorage.getItem('pnj_gemini_key');
-  if (!geminiKey) return showToast('⚠️ Gemini API key missing in Settings.');
+  if (!geminiKey) { openSettings(); return showToast('⚠️ Gemini API key add करें — Settings खुल रहे हैं...'); }
 
   const section = document.getElementById('summary-section');
   const spinner = document.getElementById('summary-spinner');
@@ -852,7 +907,7 @@ Format EXACTLY like this (no extra text):
 async function draftQuestion() {
   if (!currentArticle) return showToast('⚠️ कोई खबर चुनें।');
   const geminiKey = localStorage.getItem('pnj_gemini_key');
-  if (!geminiKey) return showToast('⚠️ Gemini API key missing in Settings.');
+  if (!geminiKey) { openSettings(); return showToast('⚠️ Gemini API key add करें — Settings खुल रहे हैं...'); }
 
   const tone = document.getElementById('tone-select').value;
   const toneMap = {
